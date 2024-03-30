@@ -6,6 +6,7 @@ class InteractionSunat(ModelsBase):
     document_number = models.CharField(max_length=24)
     payload = models.JSONField(null=True)
     company = models.ForeignKey(Company,on_delete=models.CASCADE, null=True)
+    scraping = models.BooleanField(default=False,null=True)
 
     class Meta:
         db_table = 'Interaction_Sunat'

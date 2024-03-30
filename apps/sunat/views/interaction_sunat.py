@@ -1,21 +1,20 @@
 #Django
-from django.db.models import F
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 
 from ..serializers.interaction_sunat import ConsultaSunatSerializer
-from ..models import InteractionSunat,Ruc
 
 #models
-from apps.company.models import Company
+from ..models import Ruc
 
 #helpers
 from helper.external_request import consultar_datos_ruc
 
-
+from ..util import ConsultaRUC,update_models
 #from rest_framework_api_key.permissions import HasAPIKey
 #from rest_framework.permissions import IsAuthenticated
+from threading import Thread
 
 class ConsultaRucView(APIView):
     #permission_classes = [HasAPIKey | IsAuthenticated]
@@ -27,19 +26,24 @@ class ConsultaRucView(APIView):
         
         # Aquí puedes usar api_key para realizar operaciones específicas,
         # como verificar a qué empresa o proyecto está asociada
-        
+        # Ejemplo de uso
+        consulta_ruc = ConsultaRUC()
         serializer = ConsultaSunatSerializer(data=request.data)
         if serializer.is_valid():
             if not serializer.validated_data.get('token')=='hqHfONaufIuSyoZ3YeFmOAwGaPqweLgQmWtNMfaytziBaSHwQ1hmFo3GpfwU':
                 return Response({"token":"token no valido"}, status=status.HTTP_400_BAD_REQUEST)
             numero_documento = serializer.validated_data.get('numero_documento')
-            datos = consultar_datos_ruc(numero_documento)
-            if datos:
-                InteractionSunat.objects.create(document_number=numero_documento,company_id=1,payload=datos)
-                Ruc.objects.get_or_create(document_number=numero_documento,defaults={'payload':datos})
-
-                Company.objects.filter(id=1).update(total_sunat=F('total_sunat') + 1)
-
-                return Response(datos, status=status.HTTP_200_OK)
+            ruc_model = Ruc.objects.filter(document_number=numero_documento)
+            if ruc_model:
+                ruc_model = ruc_model.first()
+                response = ruc_model.payload
+                made_scraping =False
+            else:
+                response = consulta_ruc.obtener_datos_por_ruc(numero_documento)
+                made_scraping =True
+                #datos = consultar_datos_ruc(numero_documento)
+            thread = Thread(target=update_models, args=(numero_documento,response,made_scraping))
+            thread.start()
+            return Response(response, status=status.HTTP_200_OK)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
