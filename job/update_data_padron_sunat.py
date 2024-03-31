@@ -77,6 +77,7 @@ def update_data_padron_sunat():
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
                 percent = downloaded_size * 100 / total_size
+                print(f"Progreso de descarga: {percent:.2f}%")
         print("Archivo ZIP descargado correctamente.")
 
         
