@@ -41,6 +41,8 @@ class ConsultaRucView(APIView):
             else:
                 response = consulta_ruc.obtener_datos_por_ruc(numero_documento)
                 made_scraping =True
+                Ruc.objects.create(document_number=numero_documento,payload= response)
+
                 #datos = consultar_datos_ruc(numero_documento)
             thread = Thread(target=update_models, args=(numero_documento,response,made_scraping))
             thread.start()

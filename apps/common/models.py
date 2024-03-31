@@ -12,7 +12,7 @@ STATUS_OPTIONS = (
 
 class ModelsBase(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(auto_now=True,null=True)
     deleted_at = models.DateTimeField(null=True)
     status = models.PositiveIntegerField(choices=STATUS_OPTIONS, default=1)
 

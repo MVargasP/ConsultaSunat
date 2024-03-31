@@ -29,7 +29,8 @@ INSTALLED_APPS = [
     'knox',
     'apps.company',
     'apps.sunat',
-    'apps.user'
+    'apps.user',
+    "django_crontab",
 
 ]
 
@@ -145,3 +146,8 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CRONJOBS = [
+    ('30 0 * * *', 'job.update_data_padron_sunat.update_data_padron_sunat'),
+
+]

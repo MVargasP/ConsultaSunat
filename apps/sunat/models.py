@@ -17,3 +17,23 @@ class Ruc(ModelsBase):
 
     class Meta:
         db_table = 'Ruc'
+
+class Direccion(ModelsBase):
+    ruc = models.CharField(max_length=16, unique=True)
+    ubigeo = models.CharField(max_length=6,null =True)
+    departamento = models.CharField(max_length=250,null =True)
+    provincia = models.CharField(max_length=250,null =True)
+    distrito = models.CharField(max_length=250,null =True)
+
+    class Meta:
+        db_table = 'Direccion_Sunat'
+
+class TempDireccionSunat(models.Model):
+    ruc = models.CharField(max_length=16, null=True)
+    ubigeo = models.CharField(max_length=6,null =True)
+    departamento = models.CharField(max_length=250,null =True)
+    provincia = models.CharField(max_length=250,null =True)
+    distrito = models.CharField(max_length=250,null =True)
+    
+    class Meta:
+        db_table = 'temporales\".\"Temp_Direccion_Sunat'

@@ -2,13 +2,12 @@
 import random
 import re
 import requests
-
 #rest
 from rest_framework import serializers
 from django.db.models import F
 
 #models
-from .models import InteractionSunat,Ruc
+from .models import InteractionSunat,Direccion
 from apps.company.models import Company
 
 from bs4 import BeautifulSoup
@@ -17,8 +16,29 @@ from bs4 import BeautifulSoup
 def update_models(numero_documento,response,made_scraping):
     InteractionSunat.objects.create(document_number=numero_documento,company_id=1,payload=response,scraping=made_scraping)
     Company.objects.filter(id=1).update(total_sunat=F('total_sunat') + 1)
-    Ruc.objects.get_or_create(document_number=numero_documento,defaults={'payload':response})
 
+class GetTextSoup():
+    def __init__(self,soup):
+        self.soup = soup
+
+    def obtener_valor(self,texto_buscar, elemento_valor):
+        elemento_h4 = self.soup.find('h4', text=texto_buscar)
+        if elemento_h4:
+            elemento_valor_tag = elemento_h4.find_next(elemento_valor)
+            if elemento_valor_tag:
+                valor = elemento_valor_tag.get_text(strip=True)
+                valor = valor.replace('\r\n', '').replace('\n', '').replace('\t', '').strip()  # Eliminar saltos de línea y espacios
+                return valor
+        return ""
+    
+    def obtener_valor_tabla(self,texto_buscar, elemento_valor):
+        tablas = self.soup.find_all('table', class_='tblResultado', text=texto_buscar)
+        valores = []
+        for tabla in tablas:
+            filas = tabla.find_all(elemento_valor)
+            valores.extend([fila.get_text(strip=True) for fila in filas])
+        return valores
+    
 class ConsultaRUC:
     def __init__(self):
         self.textoAleatorio = "IMPORTANTE LAS PALABRAS CLAVES DEBE SER ALEATORIO EXISTIR LETRAS Y ESTAR EN MAYUSCULA COMO RANDOM UAP UPC LIMA HOLA MUNDO COMO ESTAS TEST comparte LOS VIDEOS EN TUS REDES SOCIALES PARA MAS CONTENIDOS si quieres aprender sobre web api revisa lista de reproduccion del canal mr angel".upper()
@@ -35,7 +55,14 @@ class ConsultaRUC:
             'Upgrade-Insecure-Requests': '1',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36'
         }
-    def get_payload_direccion(self, direccion):
+    def get_payload_direccion(self, direccion,ruc):
+        direccion_list = direccion.split('  ')
+        direccion_list = [elemento for elemento in direccion_list if elemento]
+        distrito = None
+        provincia = None
+        departamento = None
+        direccion_object = Direccion.objects.filter(ruc = ruc)
+
         nombre_via_regex = r'(.*?)\s+NRO\.'
         codigo_zona_regex = r'(URB\.|ASOC\.|P\.J\.|A\.H\.|A\.V\.|COOP\.|FUNDO|PARCELA|PROG\.|RES\.|UNIDAD|VALLE|ZONA)\.'
         tipo_zona_regex = r'(.*?)\s+\w+\s*-'
@@ -46,7 +73,6 @@ class ConsultaRUC:
         codigo_zona_match = re.search(codigo_zona_regex, direccion)
         tipo_zona_match = re.search(tipo_zona_regex, direccion)
         numero_match = re.search(numero_regex, direccion)
-
         # Obtener los grupos capturados de las coincidencias
         nombre_via = nombre_via_match.group(1) if nombre_via_match else None
         codigo_zona = codigo_zona_match.group(1) if codigo_zona_match else None
@@ -55,16 +81,7 @@ class ConsultaRUC:
 
         # Construir la dirección simple y la dirección completa
         direccion_simple = f"{nombre_via}, NRO. {numero}"
-        direccion_list = direccion.split('  ')
 
-        direccion_list = [elemento for elemento in direccion_list if elemento]
-        distrito = None
-        provincia = None
-        departamento = None
-        if len(direccion_list) >2:
-            distrito = direccion_list[-1].replace('-','').strip()
-            provincia = direccion_list[-2].replace('-','').strip()
-            departamento =direccion_list[-3].replace('-','').strip()
         datos = {
             "tipo_de_via": direccion.split()[0] if direccion else None,
             "nombre_de_via": nombre_via,
@@ -76,13 +93,26 @@ class ConsultaRUC:
             "dpto": "-",
             "manzana": "-",
             "kilometro": "-",
-            "distrito":distrito,
-            "provincia":provincia,
-            "departamento":departamento,
+            "ubigeo":None,
             "direccion_simple": direccion_simple,
-            "direccion": " ".join(direccion_list)
-
-        }
+            "direccion":" ".join(direccion_list)
+            }
+        
+        if direccion_object:
+            obj = direccion_object.first()
+            datos["distrito"]= obj.distrito
+            datos["provincia"]= obj.provincia
+            datos["departamento"]=  obj.departamento,
+            datos["ubigeo"]=  obj.ubigeo,
+        else:
+            if len(direccion_list) >2:
+                distrito = direccion_list[-1].replace('-','').strip()
+                provincia = direccion_list[-2].replace('-','').strip()
+                departamento =direccion_list[-3].replace('-','').strip()
+            datos["distrito"]= distrito
+            datos["provincia"]= provincia
+            datos["departamento"]= departamento
+            datos["ubigeo"]= None
         return datos
 
 
@@ -119,11 +149,7 @@ class ConsultaRUC:
             soup = BeautifulSoup(response.text, 'html.parser')
             mensaje = soup.select_one(".list-group-item-text")
             if mensaje:
-                if ruc.startswith("10"):
-                    datos = self.ExtraerDatosRUC10(soup, ruc)
-                else:
-                    datos = self.ExtraerDatosRUC20(soup, ruc)
-
+                datos = self.ExtraerDatosRUC(soup, ruc)
                 return "Exito", datos, 200
             else:
                 raise serializers.ValidationError(
@@ -133,87 +159,50 @@ class ConsultaRUC:
             raise serializers.ValidationError(
                 {"error": "No pudimos conectarnos a la sunat"}
             )
-
-    def ExtraerDatosRUC20(self, soup, ruc):
+    
+    def ExtraerDatosRUC(self, soup, ruc):
         datos = {'success':True}
-        adicional = {}
+        adicional = {"actividad_economica_principal":None,"actividad_economica_secundaria_1":None,"actividad_economica_secundaria_2":None}
         datos["ruc"] = ruc
-        razon_social =soup.select_one(".list-group-item:nth-of-type(1) .col-sm-7 .list-group-item-heading").text
-        datos["nombre_o_razon_social"] = razon_social.split('-')[1]
-        datos["estado_del_contribuyente"] = soup.select_one(".list-group-item:nth-of-type(5) .list-group-item-text").text.strip()
-        datos["condicion_de_domicilio"] = soup.select_one(".list-group-item:nth-of-type(6) .list-group-item-text").text.strip()
-        direccion_elemento = soup.select_one(".list-group-item:nth-of-type(7) .list-group-item-text").text
-        datos_direccion = self.get_payload_direccion( direccion_elemento)
+        get_soup =GetTextSoup(soup)
+        datos["nombre_o_razon_social"] = get_soup.obtener_valor("Número de RUC:", 'h4').split('-')[1]
+        datos["tipo"] = get_soup.obtener_valor("Tipo Contribuyente:", 'p')
+        datos["nombre_comercial"] = get_soup.obtener_valor("Nombre Comercial:", 'p')
+        datos["estado_del_contribuyente"] = get_soup.obtener_valor("Estado del Contribuyente:", 'p')
+        datos["condicion_de_domicilio"] = get_soup.obtener_valor("Condición del Contribuyente:", 'p')
+
+        direccion = get_soup.obtener_valor("Domicilio Fiscal:", 'p')
+        #datos["direccion"] = direccion.replace('  ', '')
+
+        datos["fecha_inscripcion"] = get_soup.obtener_valor("Fecha de Inscripción:", 'p')
+        datos["fecha_inicio_actividades"] = get_soup.obtener_valor("Fecha de Inicio de Actividades:", 'p')
+        datos["comprobantes_pago"] = get_soup.obtener_valor("Comprobantes de Pago c/aut. de impresión (F. 806 u 816):", 'p')
+
+        datos["sistema_emision_electronica"] = get_soup.obtener_valor("Sistema de Emisión Electrónica:", 'p')
+        datos["emisor_electronico_comprobante"] = get_soup.obtener_valor("Emisor electrónico desde:", 'p')
+        #datos["comprobantes_electronicos"] = get_soup.obtener_valor("Comprobantes Electrónicos:", 'p')
+        datos["afiliado_ple_desde"] = get_soup.obtener_valor("Afiliado al PLE desde:", 'p')
+        
+
+        datos_direccion = self.get_payload_direccion(direccion ,ruc)
         datos.update(datos_direccion) 
-        datos['ubigeo']= None
-        datos["fecha_inscripcion"] = soup.select_one(".list-group-item:nth-of-type(4) .list-group-item-text").text
-        
-        datos["fecha_inicio_actividades"] = soup.select(".list-group-item:nth-of-type(4) .list-group-item-text")[1].text
-        
-        datos["comprobantes_pago"] = soup.select_one(".list-group-item:nth-of-type(11) .table.tblResultado").text.strip()
 
-        sistema_emision_electronica = self.ValidarContenido(soup.select_one(".list-group-item:nth-of-type(12) .table.tblResultado"))
-        datos["sistema_emision_electronica"] = sistema_emision_electronica
+        actividades_economicas = soup.find('table', class_='tblResultado').find_all('tr')
+        actividades_economicas = [tr.td.get_text(strip=True) for tr in actividades_economicas]
 
-        datos["emisor_electronico_comprobante"] = soup.select_one(".list-group-item:nth-of-type(13) .list-group-item-text").text
-        datos["comprobantes_electronicos"] = soup.select_one(".list-group-item:nth-of-type(14) .list-group-item-text").text
-        datos["afiliado_ple_desde"] = soup.select_one(".list-group-item:nth-of-type(15) .list-group-item-text").text
-        datos["padrones"] = soup.select_one(".list-group-item:nth-of-type(16) .table.tblResultado").text.strip()
+        adicional['actividad_economica_principal'] = actividades_economicas[0] if len(actividades_economicas) >= 1 else None
+        adicional['actividad_economica_secundaria_1'] = actividades_economicas[1] if len(actividades_economicas) >= 2 else None
+        adicional['actividad_economica_secundaria_2'] = actividades_economicas[2] if len(actividades_economicas) >= 3 else None
 
-        adicional["tipo"] = soup.select_one(".list-group-item:nth-of-type(2) .list-group-item-text").text
-        tabla_actividades = soup.select_one(".list-group-item:nth-of-type(10) .table.tblResultado")
+        adicional["comercio_exterior"] = get_soup.obtener_valor("Actividad Comercio Exterior:", 'p')
+        adicional["tipo_contabilidad"] = get_soup.obtener_valor("Sistema Contabilidad:", 'p')
+        adicional["tipo_facturacion"] = get_soup.obtener_valor("Sistema Emisión de Comprobante:", 'p')
 
-        for fila in tabla_actividades.find_all('tr'):
-            partes = fila.text.strip().split(' - ')
-            tipo_actividad = partes[0].strip()
-            adicional[f'actividad_economica_{tipo_actividad}'] = tipo_actividad
-
-        adicional["comercio_exterior"] = soup.select(".list-group-item:nth-of-type(8) .list-group-item-text")[1].text
-        adicional["tipo_contabilidad"] = soup.select_one(".list-group-item:nth-of-type(9) .list-group-item-text").text
-        adicional["tipo_facturacion"] = soup.select_one(".list-group-item:nth-of-type(8) .list-group-item-text").text
         datos['informacion_adicional']=adicional
 
         return datos
     
-    def ExtraerDatosRUC10(self, soup, ruc):
-        datos = {'success':True}
-        adicional = {}
-        datos["ruc"] = ruc
-        datos["nombre_o_razon_social"] = soup.select_one(".list-group-item:nth-of-type(1) .col-sm-7 .list-group-item-heading").text
-        datos["estado_del_contribuyente"] = soup.select_one(".list-group-item:nth-of-type(6) .list-group-item-text").text.strip()
-        datos["condicion_de_domicilio"] = soup.select_one(".list-group-item:nth-of-type(7) .list-group-item-text").text.strip()
-        direccion_elemento = soup.select_one(".list-group-item:nth-of-type(8) .list-group-item-text").text
-        datos_direccion = self.get_payload_direccion( direccion_elemento)
-        datos.update(datos_direccion) 
-        datos['ubigeo']= None
-        datos["fecha_inscripcion"] = soup.select_one(".list-group-item:nth-of-type(5) .list-group-item-text").text
-        
-        datos["fecha_inicio_actividades"] = soup.select(".list-group-item:nth-of-type(5) .list-group-item-text")[1].text
-        
-        datos["comprobantes_pago"] = soup.select_one(".list-group-item:nth-of-type(12) .table.tblResultado").text.strip()
-
-        sistema_emision_electronica = self.ValidarContenido(soup.select_one(".list-group-item:nth-of-type(13) .table.tblResultado"))
-        datos["sistema_emision_electronica"] = sistema_emision_electronica
-
-        datos["emisor_electronico_desde"] = soup.select_one(".list-group-item:nth-of-type(14) .list-group-item-text").text
-        datos["comprobantes_electronicos"] = soup.select_one(".list-group-item:nth-of-type(15) .list-group-item-text").text
-        datos["afiliado_ple_desde"] = soup.select_one(".list-group-item:nth-of-type(16) .list-group-item-text").text
-        datos["padrones"] = soup.select_one(".list-group-item:nth-of-type(17) .table.tblResultado").text.strip()
-
-        adicional["tipo"] = soup.select_one(".list-group-item:nth-of-type(2) .list-group-item-text").text
-        tabla_actividades = soup.select_one(".list-group-item:nth-of-type(11) .table.tblResultado")
-
-        for fila in tabla_actividades.find_all('tr'):
-            partes = fila.text.strip().split(' - ')
-            tipo_actividad = partes[0].strip()
-            adicional[f'actividad_economica_{tipo_actividad}'] = tipo_actividad
-
-        adicional["comercio_exterior"] = soup.select(".list-group-item:nth-of-type(9) .list-group-item-text")[1].text
-        adicional["tipo_contabilidad"] = soup.select_one(".list-group-item:nth-of-type(10) .list-group-item-text").text
-        adicional["tipo_facturacion"] = soup.select_one(".list-group-item:nth-of-type(9) .list-group-item-text").text
-        datos['informacion_adicional']=adicional
-
-        return datos
+    
     def ValidarContenido(self,value):
         if value:
             return re.sub(r'\s+', ' ', value.text)
@@ -293,7 +282,7 @@ class ConsultaRUC:
                     datos["trabajadores"] = trabajadores
                     datos['informacion_adicional']['numero_trabajadores']=None
                     if tipoRespuesta:
-                        datos['informacion_adicional']['numero_trabajadores']=trabajadores['trabajadores']
+                        datos['informacion_adicional']['numero_trabajadores']=trabajadores['trabajadores']  
 
                     return datos
                 
@@ -303,4 +292,7 @@ class ConsultaRUC:
         else:
             mensajeRespuesta = f"Ocurrió un inconveniente ({response.status_code}) al consultar la página principal con el RUC {ruc}.\r\nDetalle: {response.text}"
             raise serializers.ValidationError({"error": mensajeRespuesta} )
+
+
+
 
