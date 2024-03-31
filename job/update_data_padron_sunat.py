@@ -21,6 +21,7 @@ def procesar_archivo_zip(local_zip_path):
                         break  # Si no hay más datos por leer, salir del bucle
 
                     df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str)
+                    df = df[["RUC","UBIGEO","Departamento","Provincia","Distrito"]]
                     df = df.rename(columns={
                         "RUC": "ruc",
                         "UBIGEO": "ubigeo",
