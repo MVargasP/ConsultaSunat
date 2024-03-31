@@ -19,7 +19,7 @@ def procesar_archivo_zip(local_zip_path):
                     datos_txt = txt_file.read(chunksize).decode('ISO-8859-1')
                     if not datos_txt:
                         break  # Si no hay más datos por leer, salir del bucle
-                    df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str, eader=None,usecols=[0, 11, 12, 13, 14])      
+                    df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str, header=None,usecols=[0, 11, 12, 13, 14])      
                     df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
                     
                     df = df.dropna(subset=['ruc'])
