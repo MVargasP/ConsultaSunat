@@ -11,7 +11,7 @@ def procesar_archivo_zip(local_zip_path):
         with zipfile.ZipFile(local_zip_path, 'r') as zip_file:
             primer_archivo = zip_file.namelist()[0]
             with zip_file.open(primer_archivo) as txt_file:
-                chunksize = 100000  # Tamaño del trozo
+                chunksize = 52428800  # Tamaño del trozo 50 mb
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
                 print("Proceso por bloque")
@@ -19,16 +19,9 @@ def procesar_archivo_zip(local_zip_path):
                     datos_txt = txt_file.read(chunksize).decode('ISO-8859-1')
                     if not datos_txt:
                         break  # Si no hay más datos por leer, salir del bucle
-
-                    df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str)
-                    df = df[["RUC","UBIGEO","Departamento","Provincia","Distrito"]]
-                    df = df.rename(columns={
-                        "RUC": "ruc",
-                        "UBIGEO": "ubigeo",
-                        "Departamento": "departamento",
-                        "Provincia": "provincia",
-                        "Distrito": "distrito"
-                    })
+                    df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str, usecols=[0, 11, 12, 13, 14])      
+                    df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
+                    
                     df = df.dropna(subset=['ruc'])
                     df = df.drop_duplicates(subset=['ruc'])
 
