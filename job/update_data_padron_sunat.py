@@ -60,6 +60,8 @@ def procesar_archivo_zip(local_zip_path):
                     with connection.cursor() as cursor:
                         cursor.execute("CALL temporales.merge_direccion_sunat()", [])
                         print("MERGE EJECUTADO CORRECTAMENTE")
+                        TempDireccionSunat.objects.all().delete()
+
                         return True, "OK"
                 except Exception as e:
                     print(f"Error en sp merge_cliente: {e}")
@@ -73,10 +75,9 @@ def procesar_archivo_zip(local_zip_path):
         pass
 def update_data_padron_sunat():
     fecha_actual = datetime.datetime.now()
-    fecha_formateada = fecha_actual.strftime('%Y%m')
+    fecha_formateada = fecha_actual.strftime('%Y03')
     url = f"https://www.datosabiertos.gob.pe/sites/default/files/PadronRUC_{fecha_formateada}.zip"
     local_zip_path = f"media/PadronRUC_{fecha_formateada}.zip"
-    TempDireccionSunat.objects.all().delete()
     # Realizar la solicitud GET a la API
     response = requests.get(url, stream=True)  # Usar stream=True para leer el contenido de manera incremental
     
