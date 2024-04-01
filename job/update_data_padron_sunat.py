@@ -49,7 +49,6 @@ def procesar_archivo_zip(local_zip_path):
                     for i in range(0, len(objects_to_create), BATCH_SIZE):
                         batch = objects_to_create[i:i + BATCH_SIZE]
                         TempDireccionSunat.objects.bulk_create(batch, batch_size=BATCH_SIZE)
-
                         # Actualizar el progreso
                         downloaded_size += len(batch)
                         percent = downloaded_size * 100 / total_size
@@ -57,8 +56,8 @@ def procesar_archivo_zip(local_zip_path):
                         
             try:
                 with connection.cursor() as cursor:
-                    # Llamar al Stored Procedure merge_cliente usando CALL
                     cursor.execute("CALL temporales.merge_direccion_sunat()", [])
+                    print("MERGE EJECUTADO CORRECTAMENTE")
                     return True, "OK"
             except Exception as e:
                 print(f"Error en sp merge_cliente: {e}")
@@ -88,11 +87,7 @@ def update_data_padron_sunat():
             for chunk in response.iter_content(chunk_size=999200):
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
-                percent = downloaded_size * 100 / total_size
-                print(f"Progreso de descarga: {percent:.2f}%")
-        print("Archivo ZIP descargado correctamente.")
-
-        
+        print("Archivo ZIP descargado correctamente.",total_size)
         procesar_archivo_zip(local_zip_path)
     else:
         return False, False
