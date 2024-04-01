@@ -20,9 +20,11 @@ def procesar_archivo_zip(local_zip_path):
                     if not chunk:
                         break
                     buffer += chunk
-                    extra_bytes = txt_file.read(100)
-                    buffer += extra_bytes
-
+                    while True:
+                        extra_byte = txt_file.read(1)
+                        if not extra_byte or extra_byte == b'\n':
+                            break
+                        buffer += extra_byte
                     # Separar el búfer en líneas completas
                     lineas = buffer.split(b'\n')
                     
