@@ -24,6 +24,7 @@ def procesar_archivo_zip(local_zip_path):
                         extra_byte = txt_file.read(1)
                         if not extra_byte or extra_byte == b'\n':
                             break
+
                         buffer += extra_byte
                     # Separar el búfer en líneas completas
                     lineas = buffer.split(b'\n')
@@ -44,9 +45,8 @@ def procesar_archivo_zip(local_zip_path):
                     df=df[ ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']]
                     df = df.dropna(subset=['ruc'])
                     df = df.drop_duplicates(subset=['ruc'])
-
                     # Insertar en la base de datos Django
-                    BATCH_SIZE = 25000
+                    BATCH_SIZE = 50000
                     objects_to_create = [TempDireccionSunat(**record) for record in df.to_dict('records')]
                     for i in range(0, len(objects_to_create), BATCH_SIZE):
                         batch = objects_to_create[i:i + BATCH_SIZE]
