@@ -102,8 +102,8 @@ class ConsultaRUC:
             obj = direccion_object.first()
             datos["distrito"]= obj.distrito
             datos["provincia"]= obj.provincia
-            datos["departamento"]=  obj.departamento,
-            datos["ubigeo"]=  obj.ubigeo,
+            datos["departamento"]=  obj.departamento
+            datos["ubigeo"]=  obj.ubigeo
         else:
             if len(direccion_list) >2:
                 distrito = direccion_list[-1].replace('-','').strip()

@@ -56,16 +56,16 @@ def procesar_archivo_zip(local_zip_path):
                         percent = downloaded_size * 100 / total_size
                         print(f"Progreso: {percent:.2f}%")
                         
-                try:
-                    with connection.cursor() as cursor:
-                        cursor.execute("CALL temporales.merge_direccion_sunat()", [])
-                        print("MERGE EJECUTADO CORRECTAMENTE")
-                        TempDireccionSunat.objects.all().delete()
+                    try:
+                        with connection.cursor() as cursor:
+                            cursor.execute("CALL temporales.merge_direccion_sunat()", [])
+                            print("MERGE EJECUTADO CORRECTAMENTE")
+                            TempDireccionSunat.objects.all().delete()
 
-                        return True, "OK"
-                except Exception as e:
-                    print(f"Error en sp merge_cliente: {e}")
-                    return False, str(e)
+                            return True, "OK"
+                    except Exception as e:
+                        print(f"Error en sp merge_cliente: {e}")
+                        return False, str(e)
     except Exception as e:
         print(f"Error al abrir el archivo ZIP: {e}")
         return False, str(e)
