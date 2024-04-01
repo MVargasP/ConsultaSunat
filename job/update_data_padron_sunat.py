@@ -11,10 +11,9 @@ def procesar_archivo_zip(local_zip_path):
         with zipfile.ZipFile(local_zip_path, 'r') as zip_file:
             primer_archivo = zip_file.namelist()[0]
             with zip_file.open(primer_archivo) as txt_file:
-                chunksize = 5242880  # Tamaño del trozo 50 mb
+                chunksize = 52428800  # Tamaño del trozo 50 mb 2339715
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
-                print("Proceso por bloque")
                 buffer = b''
                 while True:
                     chunk = txt_file.read(chunksize)
@@ -39,7 +38,7 @@ def procesar_archivo_zip(local_zip_path):
                         df = df.drop_duplicates(subset=['ruc'])
 
                         # Insertar en la base de datos Django
-                        BATCH_SIZE = 8000
+                        BATCH_SIZE = 15000
                         objects_to_create = [TempDireccionSunat(**record) for record in df.to_dict('records')]
                         for i in range(0, len(objects_to_create), BATCH_SIZE):
                             batch = objects_to_create[i:i + BATCH_SIZE]
@@ -81,7 +80,7 @@ def update_data_padron_sunat():
         downloaded_size = 0
         # Guardar el archivo ZIP localmente
         with open(local_zip_path, 'wb') as local_file:
-            for chunk in response.iter_content(chunk_size=8192):
+            for chunk in response.iter_content(chunk_size=11698575):
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
                 percent = downloaded_size * 100 / total_size
