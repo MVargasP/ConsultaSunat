@@ -49,14 +49,14 @@ def procesar_archivo_zip(local_zip_path):
                             percent = downloaded_size * 100 / total_size
                             print(f"Progreso: {percent:.2f}%")
                         
-                try:
-                    with connection.cursor() as cursor:
-                        # Llamar al Stored Procedure merge_cliente usando CALL
-                        cursor.execute("CALL temporales.merge_direccion_sunat()", [])
-                        return True, "OK"
-                except Exception as e:
-                    print(f"Error en sp merge_cliente: {e}")
-                    return False, str(e)
+            try:
+                with connection.cursor() as cursor:
+                    # Llamar al Stored Procedure merge_cliente usando CALL
+                    cursor.execute("CALL temporales.merge_direccion_sunat()", [])
+                    return True, "OK"
+            except Exception as e:
+                print(f"Error en sp merge_cliente: {e}")
+                return False, str(e)
     except Exception as e:
         print(f"Error al abrir el archivo ZIP: {e}")
         return False, str(e)
