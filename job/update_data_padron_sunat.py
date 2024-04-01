@@ -80,7 +80,7 @@ def update_data_padron_sunat():
         downloaded_size = 0
         # Guardar el archivo ZIP localmente
         with open(local_zip_path, 'wb') as local_file:
-            for chunk in response.iter_content(chunk_size=999200):
+            for chunk in response.iter_content(chunk_size=819200):
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
                 percent = downloaded_size * 100 / total_size
