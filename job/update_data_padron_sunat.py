@@ -69,7 +69,7 @@ def update_data_padron_sunat():
     fecha_actual = datetime.datetime.now()
     fecha_formateada = fecha_actual.strftime('%Y%m')
     url = f"https://www.datosabiertos.gob.pe/sites/default/files/PadronRUC_{fecha_formateada}.zip"
-    local_zip_path = f"PadronRUC_{fecha_formateada}.zip"
+    local_zip_path = f"media/PadronRUC_{fecha_formateada}.zip"
     TempDireccionSunat.objects.all().delete()
     # Realizar la solicitud GET a la API
     response = requests.get(url, stream=True)  # Usar stream=True para leer el contenido de manera incremental
@@ -80,7 +80,7 @@ def update_data_padron_sunat():
         downloaded_size = 0
         # Guardar el archivo ZIP localmente
         with open(local_zip_path, 'wb') as local_file:
-            for chunk in response.iter_content(chunk_size=819200):
+            for chunk in response.iter_content(chunk_size=999200):
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
                 percent = downloaded_size * 100 / total_size
