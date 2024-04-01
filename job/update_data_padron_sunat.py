@@ -89,6 +89,7 @@ def update_data_padron_sunat():
             for chunk in response.iter_content(chunk_size=999200):
                 local_file.write(chunk)
                 downloaded_size += len(chunk)
+                print(".")
         print("Archivo ZIP descargado correctamente.",total_size)
         procesar_archivo_zip(local_zip_path)
     else:
