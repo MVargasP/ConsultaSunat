@@ -24,7 +24,6 @@ def procesar_archivo_zip(local_zip_path):
                         linea, buffer = buffer.split(b'\n', 1)
                         datos_txt = linea.decode('ISO-8859-1')
                         df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str,header=None)      
-                        #df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
                         print(df.columns)
 
                         df.rename(columns={
@@ -38,6 +37,7 @@ def procesar_archivo_zip(local_zip_path):
                         print(df.columns)
                         df = df.dropna(subset=['ruc'])
                         df = df.drop_duplicates(subset=['ruc'])
+                        df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
 
                         # Insertar en la base de datos Django
                         BATCH_SIZE = 8000
