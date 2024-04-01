@@ -11,32 +11,46 @@ def procesar_archivo_zip(local_zip_path):
         with zipfile.ZipFile(local_zip_path, 'r') as zip_file:
             primer_archivo = zip_file.namelist()[0]
             with zip_file.open(primer_archivo) as txt_file:
-                chunksize = 52428800  # Tamaño del trozo 50 mb
+                chunksize = 524288  # Tamaño del trozo 50 mb
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
-                print("Proceso por bloque")
+                buffer = b''
                 while True:
-                    datos_txt = txt_file.read(chunksize).decode('ISO-8859-1')
-                    if not datos_txt:
-                        break  # Si no hay más datos por leer, salir del bucle
-                    df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str, header=None,usecols=[0, 11, 12, 13, 14])      
-                    df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
-                    
-                    df = df.dropna(subset=['ruc'])
-                    df = df.drop_duplicates(subset=['ruc'])
+                    chunk = txt_file.read(chunksize)
+                    if not chunk:
+                        break
+                    buffer += chunk
+                    while b'\n' in buffer:
+                        linea, buffer = buffer.split(b'\n', 1)
+                        datos_txt = linea.decode('ISO-8859-1')
+                        df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str,header=None)      
+                        #df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
+                        print(df.columns)
 
-                    # Insertar en la base de datos Django
-                    BATCH_SIZE = 8000
-                    objects_to_create = [TempDireccionSunat(**record) for record in df.to_dict('records')]
-                    for i in range(0, len(objects_to_create), BATCH_SIZE):
-                        batch = objects_to_create[i:i + BATCH_SIZE]
-                        TempDireccionSunat.objects.bulk_create(batch, batch_size=BATCH_SIZE)
+                        df.rename(columns={
+                            0: 'ruc',
+                            11: 'ubigeo',
+                            12: 'departamento',
+                            13: 'provincia',
+                            14: 'distrito'
+                        }, inplace=True)
 
-                        # Actualizar el progreso
-                        downloaded_size += len(batch)
-                        percent = downloaded_size * 100 / total_size
-                        print(f"Progreso: {percent:.2f}%")
-                    print("termino bloque1")
+                        print(df.columns)
+                        df = df.dropna(subset=['ruc'])
+                        df = df.drop_duplicates(subset=['ruc'])
+
+                        # Insertar en la base de datos Django
+                        BATCH_SIZE = 8000
+                        objects_to_create = [TempDireccionSunat(**record) for record in df.to_dict('records')]
+                        for i in range(0, len(objects_to_create), BATCH_SIZE):
+                            batch = objects_to_create[i:i + BATCH_SIZE]
+                            TempDireccionSunat.objects.bulk_create(batch, batch_size=BATCH_SIZE)
+
+                            # Actualizar el progreso
+                            downloaded_size += len(batch)
+                            percent = downloaded_size * 100 / total_size
+                            print(f"Progreso: {percent:.2f}%")
+                        
                 try:
                     with connection.cursor() as cursor:
                         # Llamar al Stored Procedure merge_cliente usando CALL
@@ -51,7 +65,7 @@ def procesar_archivo_zip(local_zip_path):
     finally:
         # Eliminar el archivo ZIP local después de su uso
         os.remove(local_zip_path)
-
+        pass
 def update_data_padron_sunat():
     fecha_actual = datetime.datetime.now()
     fecha_formateada = fecha_actual.strftime('%Y%m')
