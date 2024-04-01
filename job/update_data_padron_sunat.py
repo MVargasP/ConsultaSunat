@@ -11,7 +11,7 @@ def procesar_archivo_zip(local_zip_path):
         with zipfile.ZipFile(local_zip_path, 'r') as zip_file:
             primer_archivo = zip_file.namelist()[0]
             with zip_file.open(primer_archivo) as txt_file:
-                chunksize = 52428800  # Tamaño del trozo 50 mb 2339715
+                chunksize = 524288000  # Tamaño del trozo 50 mb 2339715
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
                 buffer = b''
@@ -48,7 +48,6 @@ def procesar_archivo_zip(local_zip_path):
                             downloaded_size += len(batch)
                             percent = downloaded_size * 100 / total_size
                             print(f"Progreso: {percent:.2f}%")
-                        print("termino bloque1")
                         
                 try:
                     with connection.cursor() as cursor:
