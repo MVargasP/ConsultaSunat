@@ -14,6 +14,7 @@ def procesar_archivo_zip(local_zip_path):
                 chunksize = 524288  # Tamaño del trozo 50 mb
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
+                print("Proceso por bloque")
                 buffer = b''
                 while True:
                     chunk = txt_file.read(chunksize)
@@ -24,8 +25,7 @@ def procesar_archivo_zip(local_zip_path):
                         linea, buffer = buffer.split(b'\n', 1)
                         datos_txt = linea.decode('ISO-8859-1')
                         df = pd.read_csv(BytesIO(datos_txt.encode()), sep=',', dtype=str,header=None)      
-                        print(df.columns)
-
+                        #df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
                         df.rename(columns={
                             0: 'ruc',
                             11: 'ubigeo',
@@ -34,10 +34,9 @@ def procesar_archivo_zip(local_zip_path):
                             14: 'distrito'
                         }, inplace=True)
 
-                        print(df.columns)
+                        df=df[ ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']]
                         df = df.dropna(subset=['ruc'])
                         df = df.drop_duplicates(subset=['ruc'])
-                        df.columns = ['ruc', 'ubigeo', 'departamento', 'provincia', 'distrito']
 
                         # Insertar en la base de datos Django
                         BATCH_SIZE = 8000
@@ -50,6 +49,7 @@ def procesar_archivo_zip(local_zip_path):
                             downloaded_size += len(batch)
                             percent = downloaded_size * 100 / total_size
                             print(f"Progreso: {percent:.2f}%")
+                        print("termino bloque1")
                         
                 try:
                     with connection.cursor() as cursor:
