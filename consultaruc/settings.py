@@ -148,5 +148,5 @@ CORS_ALLOW_HEADERS = [
 CORS_ALLOW_CREDENTIALS = True
 
 CRONJOBS = [
-    ('30 22 * * *', 'job.update_data_padron_sunat.update_data_padron_sunat'),
+    ('55 23 * * *', 'job.update_data_padron_sunat.update_data_padron_sunat'),
 ]
