@@ -11,7 +11,7 @@ def procesar_archivo_zip(local_zip_path):
         with zipfile.ZipFile(local_zip_path, 'r') as zip_file:
             primer_archivo = zip_file.namelist()[0]
             with zip_file.open(primer_archivo) as txt_file:
-                chunksize = 524288  # Tamaño del trozo 50 mb
+                chunksize = 5242880  # Tamaño del trozo 50 mb
                 total_size = os.path.getsize(local_zip_path)
                 downloaded_size = 0
                 print("Proceso por bloque")
