@@ -165,7 +165,7 @@ class ConsultaRUC:
         adicional = {"actividad_economica_principal":None,"actividad_economica_secundaria_1":None,"actividad_economica_secundaria_2":None}
         datos["ruc"] = ruc
         get_soup =GetTextSoup(soup)
-        datos["nombre_o_razon_social"] = get_soup.obtener_valor("Número de RUC:", 'h4').split('-')[1]
+        datos["nombre_o_razon_social"] = "-".join(get_soup.obtener_valor("Número de RUC:", 'h4').split('-')[1:])
         datos["tipo"] = get_soup.obtener_valor("Tipo Contribuyente:", 'p')
         datos["nombre_comercial"] = get_soup.obtener_valor("Nombre Comercial:", 'p')
         datos["estado_del_contribuyente"] = get_soup.obtener_valor("Estado del Contribuyente:", 'p')
