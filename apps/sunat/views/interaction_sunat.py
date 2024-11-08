@@ -2,11 +2,11 @@
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-
+from django.utils import timezone
 from ..serializers.interaction_sunat import ConsultaSunatSerializer
 
 #models
-from ..models import Ruc
+from ..models import Ruc, Company
 
 #helpers
 from helper.external_request import consultar_datos_ruc
@@ -30,8 +30,16 @@ class ConsultaRucView(APIView):
         consulta_ruc = ConsultaRUC()
         serializer = ConsultaSunatSerializer(data=request.data)
         if serializer.is_valid():
-            if not serializer.validated_data.get('token')=='hqHfONaufIuSyoZ3YeFmOAwGaPqweLgQmWtNMfaytziBaSHwQ1hmFo3GpfwU':
+            token =serializer.validated_data.get('token')
+            try:
+                company = Company.objects.get(token=token)
+                if company.date_finish_sunat and company.date_finish_sunat < timezone.now().date():
+                    return Response({"token": "El token ha vencido."}, status=status.HTTP_400_BAD_REQUEST)
+            except:
                 return Response({"token":"token no valido"}, status=status.HTTP_400_BAD_REQUEST)
+                
+            #if not serializer.validated_data.get('token')=='hqHfONaufIuSyoZ3YeFmOAwGaPqweLgQmWtNMfaytziBaSHwQ1hmFo3GpfwU':
+            #    return Response({"token":"token no valido"}, status=status.HTTP_400_BAD_REQUEST)
             numero_documento = serializer.validated_data.get('numero_documento')
             ruc_model = Ruc.objects.filter(document_number=numero_documento)
             if ruc_model:
@@ -44,7 +52,7 @@ class ConsultaRucView(APIView):
                 Ruc.objects.create(document_number=numero_documento,payload= response)
 
                 #datos = consultar_datos_ruc(numero_documento)
-            thread = Thread(target=update_models, args=(numero_documento,response,made_scraping))
+            thread = Thread(target=update_models, args=(numero_documento,response,made_scraping, company.id))
             thread.start()
             return Response(response, status=status.HTTP_200_OK)
         

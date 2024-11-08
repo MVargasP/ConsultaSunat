@@ -13,9 +13,9 @@ from apps.company.models import Company
 from bs4 import BeautifulSoup
 
 
-def update_models(numero_documento,response,made_scraping):
+def update_models(numero_documento,response,made_scraping,company_id):
     InteractionSunat.objects.create(document_number=numero_documento,company_id=1,payload=response,scraping=made_scraping)
-    Company.objects.filter(id=1).update(total_sunat=F('total_sunat') + 1)
+    Company.objects.filter(id=company_id).update(total_sunat=F('total_sunat') + 1)
 
 class GetTextSoup():
     def __init__(self,soup):
