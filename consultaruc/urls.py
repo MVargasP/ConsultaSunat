@@ -1,4 +1,5 @@
 from django.urls import path,include
+from apps.common.views import HomeView
  
 extra_patterns = [
     path('',include('apps.sunat.urls')),
@@ -7,6 +8,7 @@ extra_patterns = [
 
     ]
 urlpatterns = [
+    path('', HomeView.as_view(), name='index'),
     path('api/', include(extra_patterns)),
 
 ] 
