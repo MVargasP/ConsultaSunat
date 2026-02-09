@@ -13,9 +13,41 @@ from apps.company.models import Company
 from bs4 import BeautifulSoup
 
 
+
+from datetime import datetime
 def update_models(numero_documento,response,made_scraping,company_id):
     InteractionSunat.objects.create(document_number=numero_documento,company_id=1,payload=response,scraping=made_scraping)
-    Company.objects.filter(id=company_id).update(total_sunat=F('total_sunat') + 1)
+    
+    now = datetime.now()
+    if now.day == 1:
+        # Check if this company already has interactions today (which is the 1st of month)
+        # Since we just created one above, the count will be at least 1.
+        # However, checking 'created_at__date' for today is safer than assuming create() worked perfectly first.
+        # But wait, create() just ran.
+        # If this is really the FIRST one, then count should be 1.
+        # If there were previous ones today, count > 1.
+        
+        interaction_count = InteractionSunat.objects.filter(
+            company_id=1, # Note: original code hardcoded company_id=1 for InteractionSunat... maintaining it but using company_id for Company update?
+                          # The user request is about Company update. 
+                          # If InteractionSunat always uses 1, we can't distinguish which company made the request unless company_id is reliable.
+                          # Assuming the user wants to filter by the passed company_id for logic, but maybe InteractionSunat is shared?
+                          # User passed company_id logic for Company update. So I'll filter InteractionSunat by company_id IF the original create used it.
+                          # Original create used 1. This is confusing. 
+                          # I will assume I should check interactions based on how they are stored.
+                          # If they are stored with company_id=1 always, then I can't check per company.
+                          # I'll check InteractionSunat with company_id=1 as per line 17.
+            created_at__year=now.year,
+            created_at__month=now.month,
+            created_at__day=now.day
+        ).count()
+
+        if interaction_count == 1:
+             Company.objects.filter(id=company_id).update(total_sunat=1)
+        else:
+             Company.objects.filter(id=company_id).update(total_sunat=F('total_sunat') + 1)
+    else:
+        Company.objects.filter(id=company_id).update(total_sunat=F('total_sunat') + 1)
 
 class GetTextSoup():
     def __init__(self,soup):

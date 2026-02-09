@@ -96,9 +96,13 @@ async function fetchCompanyData() {
         if (response.ok) {
             const companyData = await response.json();
             state.company = companyData;
-            animateValue(totalSunatEl, 0, companyData.total_sunat, 1000);
+            const limit = companyData.limit_sunat || '';
+            const end = companyData.total_sunat || 0;
+            animateValue(totalSunatEl, 0, end, 1000, limit);
         } else if (response.status === 401) {
             logout();
+        } else {
+            totalSunatEl.textContent = '--- / ---';
         }
     } catch (error) {
         console.error('Fetch company error:', error);
@@ -113,12 +117,13 @@ function logout() {
 }
 
 // Helper: Animate numbers
-function animateValue(obj, start, end, duration) {
+function animateValue(obj, start, end, duration, limit) {
     let startTimestamp = null;
     const step = (timestamp) => {
         if (!startTimestamp) startTimestamp = timestamp;
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        obj.innerHTML = Math.floor(progress * (end - start) + start);
+        const currentVal = Math.floor(progress * (end - start) + start);
+        obj.innerHTML = limit ? `${currentVal} / ${limit}` : currentVal;
         if (progress < 1) {
             window.requestAnimationFrame(step);
         }
